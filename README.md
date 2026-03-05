@@ -1,38 +1,142 @@
 # Codebase Archaeologist
 
-An MCP server + CLI that analyzes any codebase and reverse-engineers its "institutional knowledge" — not just code structure, but *why* decisions were made, tech debt patterns, tribal knowledge, and onboarding guides.
+An MCP server + CLI that analyzes any codebase and reverse-engineers its "institutional knowledge" — naming conventions, architecture patterns, knowledge silos, and tribal knowledge. Auto-generates CLAUDE.md, ARCHITECTURE.md, and ONBOARDING.md.
 
-## What It Does
+No LLM dependency. Pure heuristic analysis.
 
-- **Git history analysis:** Who changed what, when, and (inferred) why
-- **Pattern detection:** "This repo uses Repository pattern", "Tests follow AAA"
-- **Knowledge extraction:** Architecture decisions, coding conventions, tribal knowledge
-- **Auto-generated docs:** CLAUDE.md + ARCHITECTURE.md + ONBOARDING.md
+## Install
 
-## MCP Server Tools
+```bash
+pip install codebase-archaeologist
+```
 
-| Tool | Description |
-|------|-------------|
-| `analyze_codebase` | Full codebase analysis with pattern detection |
-| `explain_decision` | Explain why a specific architectural decision was made |
-| `generate_claude_md` | Generate the CLAUDE.md that should have existed |
-| `map_tribal_knowledge` | Map undocumented conventions and tribal knowledge |
+Or from source:
+
+```bash
+git clone https://github.com/EduardPetraeus/codebase-archaeologist.git
+cd codebase-archaeologist
+pip install -e ".[dev]"
+```
+
+Requires Python 3.12+.
 
 ## CLI Usage
 
 ```bash
+# Generate all docs to stdout
 archaeologist dig ./my-repo
+
+# Write docs to a directory
+archaeologist dig ./my-repo -o ./output
+
+# Generate only CLAUDE.md
+archaeologist dig ./my-repo --docs claude-md
+
+# JSON profile output
+archaeologist dig ./my-repo --format json
+
+# Skip git history analysis (faster)
+archaeologist dig ./my-repo --no-git
 ```
 
-Produces a full report with generated documentation.
+### Sample Output
 
-## Why This Exists
+```
+$ archaeologist dig ./codebase-archaeologist --docs claude-md
 
-Every time a developer opens an unfamiliar codebase, they spend 20+ minutes understanding context. Existing tools (CodeScene, etc.) measure metrics. None *explain* a codebase the way a senior developer would. This tool does.
+# CLAUDE.md — codebase-archaeologist
 
-## Status
+## project_context
 
-Early development. See [BRIEF.md](~/deep-research/active/codebase-archaeologist/BRIEF.md) for project plan.
+project_name: "codebase-archaeologist"
+description: "FastMCP application with CLI interface"
+stack: "Python, FastMCP, click, gitpython, rich"
+primary_language: "Python"
+
+## conventions
+
+naming:
+  classes: PascalCase
+  functions: snake_case
+
+file_structure:
+  source_code: src/
+  tests: tests/
+
+## verification
+
+before_claiming_done:
+  - Run tests: pytest
+  - Lint: ruff
+```
+
+## MCP Server
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `analyze_codebase` | Full codebase profile — language, structure, patterns, git history |
+| `explain_decision` | Explain architectural decisions based on codebase evidence |
+| `generate_claude_md` | Generate the CLAUDE.md your repo should have had |
+| `map_tribal_knowledge` | Map conventions, knowledge silos, risk areas, recommendations |
+
+All tools are read-only.
+
+### Setup with Claude Code
+
+Add to `~/.claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "codebase-archaeologist": {
+      "command": "python",
+      "args": ["-m", "codebase_archaeologist.mcp_server"]
+    }
+  }
+}
+```
+
+Or run directly:
+
+```bash
+python -m codebase_archaeologist.mcp_server
+```
+
+## What It Detects
+
+**4 analyzers** feed into **3 generators**:
+
+```
+Git History ─────┐
+Code Structure ──┤                  ┌─ CLAUDE.md
+Pattern Detector ┼─→ Orchestrator ──┼─ ARCHITECTURE.md
+Dependency ──────┘                  └─ ONBOARDING.md
+```
+
+| Analyzer | Detects |
+|----------|---------|
+| **Git History** | Contributors, hot files, bus factor, commit conventions, churn |
+| **Code Structure** | Language, src layout, CI system, entry points, config files |
+| **Pattern Detector** | Naming conventions, architecture patterns, type hints, docstrings |
+| **Dependency** | Package manager, framework, dependency categories |
+
+## v0.1 Limitations
+
+- Deep analysis only for Python repos (other languages get basic structure)
+- `explain_decision` is keyword-match + template (no LLM) — honest about it in output
+- No monorepo support
+- No incremental analysis / caching
+- Git history capped at 1000 commits
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest                    # 96 tests
+ruff check . && ruff format .
+```
 
 ## License
 
