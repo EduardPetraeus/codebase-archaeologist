@@ -115,10 +115,9 @@ class CodeStructureAnalyzer(BaseAnalyzer):
 
         total = 0
         for f in sampled:
-            try:
-                total += len(f.read_text(encoding="utf-8", errors="ignore").splitlines())
-            except (OSError, UnicodeDecodeError):
-                continue
+            content = self._safe_read(f)
+            if content is not None:
+                total += len(content.splitlines())
         return total
 
     def _detect_src_layout(self) -> bool:

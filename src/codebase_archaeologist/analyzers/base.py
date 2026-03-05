@@ -3,6 +3,8 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+MAX_FILE_SIZE = 1_000_000  # 1 MB — skip files larger than this
+
 
 class BaseAnalyzer(ABC):
     """Abstract base for codebase analyzers."""
@@ -33,11 +35,33 @@ class BaseAnalyzer(ABC):
                 ".mypy_cache",
                 ".ruff_cache",
             }
+        resolved_root = self.repo_path.resolve()
         files = []
         for f in self.repo_path.rglob("*"):
-            if f.is_file() and not any(d in f.parts for d in exclude_dirs):
-                if extensions is None or f.suffix in extensions:
-                    files.append(f)
+            if f.is_symlink():
+                continue
+            if not f.is_file():
+                continue
+            # Verify file is within repo (prevent symlink escapes)
+            try:
+                f.resolve().relative_to(resolved_root)
+            except ValueError:
+                continue
+            if any(d in f.parts for d in exclude_dirs):
+                continue
+            if extensions is not None and f.suffix not in extensions:
+                continue
+            files.append(f)
             if len(files) >= self.max_files:
                 break
         return files
+
+    @staticmethod
+    def _safe_read(filepath: Path) -> str | None:
+        """Read file content safely, skipping oversized or binary files."""
+        try:
+            if filepath.stat().st_size > MAX_FILE_SIZE:
+                return None
+            return filepath.read_text(errors="ignore")
+        except (OSError, UnicodeDecodeError):
+            return None

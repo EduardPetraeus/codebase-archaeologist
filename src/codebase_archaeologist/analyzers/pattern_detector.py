@@ -62,9 +62,11 @@ class PatternDetector(BaseAnalyzer):
 
         for filepath in python_files:
             try:
-                source = filepath.read_text(encoding="utf-8", errors="replace")
+                source = self._safe_read(filepath)
+                if source is None:
+                    continue
                 tree = ast.parse(source, filename=str(filepath))
-            except (SyntaxError, ValueError):
+            except (SyntaxError, ValueError, RecursionError):
                 continue
 
             # Check for TYPE_CHECKING / typing imports

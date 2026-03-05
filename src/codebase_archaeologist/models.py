@@ -118,7 +118,11 @@ class CodebaseProfile:
 
         def _convert(obj):
             if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-                return {k: _convert(v) for k, v in dataclasses.asdict(obj).items()}
+                d = {k: _convert(v) for k, v in dataclasses.asdict(obj).items()}
+                # Redact absolute path — only expose repo name
+                if "path" in d and isinstance(d["path"], str) and "/" in d["path"]:
+                    d["path"] = d["path"].rsplit("/", 1)[-1]
+                return d
             if isinstance(obj, Path):
                 return str(obj)
             return obj
