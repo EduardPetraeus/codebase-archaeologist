@@ -11,6 +11,9 @@ from codebase_archaeologist.generators.claude_md_generator import ClaudeMdGenera
 from codebase_archaeologist.generators.onboarding_generator import OnboardingGenerator
 from codebase_archaeologist.models import CodebaseProfile
 
+MAX_FILES_CEILING = 5000
+MAX_COMMITS_CEILING = 10000
+
 
 def analyze_repo(
     path: str | Path,
@@ -22,6 +25,10 @@ def analyze_repo(
     repo_path = Path(path).resolve()
     if not repo_path.is_dir():
         raise ValueError(f"Not a directory: {repo_path}")
+
+    # Clamp to safe upper bounds
+    max_files = min(max_files, MAX_FILES_CEILING)
+    max_commits = min(max_commits, MAX_COMMITS_CEILING)
 
     profile = CodebaseProfile(
         path=repo_path,

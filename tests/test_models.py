@@ -35,7 +35,7 @@ def test_codebase_profile_to_dict():
     d = profile.to_dict()
     assert isinstance(d, dict)
     assert d["name"] == "test"
-    assert d["path"] == "/tmp/test"
+    assert d["path"] == "test"  # absolute paths are redacted to basename
     assert d["git_history"]["total_commits"] == 5
     assert d["code_structure"]["primary_language"] == "Python"
 

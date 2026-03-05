@@ -1,10 +1,25 @@
 """MCP server with 4 tools for codebase analysis."""
 
 import re
+from pathlib import Path
 
 from fastmcp import FastMCP
 
 from codebase_archaeologist.orchestrator import analyze_repo, generate_docs
+
+
+def _validate_repo_path(path: str) -> Path:
+    """Validate that path is a directory containing a .git folder."""
+    repo = Path(path).resolve()
+    if not repo.is_dir():
+        raise ValueError(f"Not a directory: {repo}")
+    if not (repo / ".git").exists():
+        raise ValueError(
+            f"Not a git repository (no .git directory): {repo}. "
+            "Codebase Archaeologist only analyzes git repositories."
+        )
+    return repo
+
 
 mcp = FastMCP(
     "Codebase Archaeologist",
@@ -28,6 +43,7 @@ def analyze_codebase(
     Returns:
         Full CodebaseProfile as a dictionary.
     """
+    _validate_repo_path(path)
     profile = analyze_repo(path, include_git_history=include_git_history, max_files=max_files)
     return profile.to_dict()
 
@@ -46,6 +62,7 @@ def explain_decision(path: str, question: str) -> str:
     Returns:
         Markdown explanation with evidence.
     """
+    _validate_repo_path(path)
     profile = analyze_repo(path, include_git_history=True, max_files=500)
     keywords = _extract_keywords(question)
     evidence = []
@@ -140,6 +157,7 @@ def generate_claude_md(path: str, style: str = "standard") -> str:
     Returns:
         CLAUDE.md content as markdown string.
     """
+    _validate_repo_path(path)
     profile = analyze_repo(path, include_git_history=True, max_files=500)
     docs = generate_docs(profile, docs=["claude-md"], style=style)
     return docs["CLAUDE.md"]
@@ -155,6 +173,7 @@ def map_tribal_knowledge(path: str) -> dict:
     Returns:
         Dict with conventions, knowledge_silos, risk_areas, recommendations.
     """
+    _validate_repo_path(path)
     profile = analyze_repo(path, include_git_history=True, max_files=500)
 
     conventions = []

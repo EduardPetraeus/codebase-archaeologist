@@ -14,6 +14,14 @@ CONVENTIONAL_COMMIT_PATTERN = re.compile(
 )
 
 
+def _redact_email(email: str) -> str:
+    """Redact email to protect PII. Shows domain only."""
+    if "@" in email:
+        _, domain = email.rsplit("@", 1)
+        return f"***@{domain}"
+    return "***"
+
+
 class GitHistoryAnalyzer(BaseAnalyzer):
     """Extract institutional knowledge from git history."""
 
@@ -84,7 +92,7 @@ class GitHistoryAnalyzer(BaseAnalyzer):
             [
                 Contributor(
                     name=name,
-                    email=email,
+                    email=_redact_email(email),
                     commit_count=data["commit_count"],
                     files_touched=sorted(data["files_touched"]),
                     first_commit_date=data["first_commit_date"],
