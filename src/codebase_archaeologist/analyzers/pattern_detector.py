@@ -196,11 +196,13 @@ class PatternDetector(BaseAnalyzer):
         """Detect architecture patterns based on directory structure."""
         patterns: list[str] = []
 
-        # Collect top-level and nested directory names
+        # Derive directory names from collected (git-aware) files
+        all_files = self._collect_files()
         dir_names: set[str] = set()
-        for path in self.repo_path.rglob("*"):
-            if path.is_dir():
-                dir_names.add(path.name)
+        for f in all_files:
+            for parent in f.relative_to(self.repo_path).parents:
+                if parent.name:
+                    dir_names.add(parent.name)
 
         # Layered architecture
         if dir_names & _LAYERED_DIRS:
@@ -218,9 +220,9 @@ class PatternDetector(BaseAnalyzer):
         if (self.repo_path / "src").is_dir():
             patterns.append("src-layout")
 
-        # Monorepo: multiple pyproject.toml or package.json
-        pyproject_count = len(list(self.repo_path.rglob("pyproject.toml")))
-        package_json_count = len(list(self.repo_path.rglob("package.json")))
+        # Monorepo: multiple pyproject.toml or package.json in non-ignored dirs
+        pyproject_count = sum(1 for f in all_files if f.name == "pyproject.toml")
+        package_json_count = sum(1 for f in all_files if f.name == "package.json")
         if pyproject_count > 1 or package_json_count > 1:
             patterns.append("monorepo")
 

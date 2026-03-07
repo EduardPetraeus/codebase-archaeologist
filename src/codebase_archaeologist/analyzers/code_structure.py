@@ -225,38 +225,27 @@ class CodeStructureAnalyzer(BaseAnalyzer):
                         )
 
     def _build_directory_tree(self) -> dict[str, list[str]]:
-        """Build a directory tree representation (top 2 levels)."""
-        exclude_dirs = {
-            ".git",
-            "__pycache__",
-            "node_modules",
-            ".venv",
-            "venv",
-            ".tox",
-            ".eggs",
-            "dist",
-            "build",
-            ".mypy_cache",
-            ".ruff_cache",
-        }
+        """Build a directory tree representation (top 2 levels), respecting .gitignore."""
         tree: dict[str, list[str]] = {}
 
         # Level 0: repo root
         root_entries: list[str] = []
         for item in sorted(self.repo_path.iterdir()):
-            if item.name in exclude_dirs:
+            if self._is_path_gitignored(item):
                 continue
             root_entries.append(item.name + ("/" if item.is_dir() else ""))
         tree["."] = root_entries
 
         # Level 1: immediate subdirectories
         for item in sorted(self.repo_path.iterdir()):
-            if not item.is_dir() or item.name in exclude_dirs or item.name.startswith("."):
+            if not item.is_dir() or item.name.startswith("."):
+                continue
+            if self._is_path_gitignored(item):
                 continue
             sub_entries: list[str] = []
             try:
                 for child in sorted(item.iterdir()):
-                    if child.name in exclude_dirs:
+                    if self._is_path_gitignored(child):
                         continue
                     sub_entries.append(child.name + ("/" if child.is_dir() else ""))
             except PermissionError:

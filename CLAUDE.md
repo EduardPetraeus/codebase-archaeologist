@@ -2,7 +2,7 @@
 
 ## Project Overview
 MCP server + CLI that reverse-engineers institutional knowledge from codebases.
-Deep research project: `~/deep-research/active/codebase-archaeologist/BRIEF.md`
+Deep research project: `~/build-logs/deep-research/active/codebase-archaeologist/BRIEF.md`
 
 ## Stack
 - Python 3.12+

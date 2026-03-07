@@ -67,3 +67,47 @@ class TestCodeStructureAnalyzer:
         assert result.has_ci is False
         assert result.config_files == []
         assert result.entry_points == []
+
+    def test_gitignored_files_excluded(self, tmp_repo: Path) -> None:
+        """Files in gitignored directories should not appear in analysis."""
+        # Create a venv-like directory with Python files
+        venv = tmp_repo / ".venv-custom"
+        venv.mkdir()
+        pkg = venv / "lib" / "site-packages" / "somepkg"
+        pkg.mkdir(parents=True)
+        (pkg / "cli.py").write_text("def main():\n    pass\n")
+        (pkg / "app.py").write_text("def run():\n    pass\n")
+
+        # Add to .gitignore
+        (tmp_repo / ".gitignore").write_text(".venv-custom/\n")
+        subprocess.run(["git", "add", ".gitignore"], cwd=tmp_repo, capture_output=True, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "chore: add gitignore"],
+            cwd=tmp_repo,
+            capture_output=True,
+            check=True,
+        )
+
+        analyzer = CodeStructureAnalyzer(tmp_repo)
+        result = analyzer.analyze()
+
+        # Entry points should NOT include files from .venv-custom
+        entry_paths = [ep.path for ep in result.entry_points]
+        for path in entry_paths:
+            assert ".venv-custom" not in path, f"Gitignored file leaked: {path}"
+
+        # Directory tree should NOT include .venv-custom
+        root_items = result.directory_tree.get(".", [])
+        assert ".venv-custom/" not in root_items
+
+    def test_untracked_non_ignored_files_included(self, tmp_repo: Path) -> None:
+        """New files not yet staged should still appear (they're not gitignored)."""
+        # Create a new file without staging it
+        (tmp_repo / "src" / "myproject" / "new_module.py").write_text(
+            "def new_function():\n    pass\n"
+        )
+
+        analyzer = CodeStructureAnalyzer(tmp_repo)
+        all_files = analyzer._collect_files(extensions={".py"})
+        file_names = [f.name for f in all_files]
+        assert "new_module.py" in file_names
