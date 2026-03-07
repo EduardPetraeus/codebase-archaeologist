@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+
 from codebase_archaeologist.analyzers.pattern_detector import PatternDetector
 
 
@@ -88,7 +90,6 @@ class TestPatternDetector:
 
     def test_gitignored_python_excluded_from_patterns(self, tmp_repo):
         """Python files in gitignored dirs should not affect pattern detection."""
-        import subprocess
 
         # Add a venv with camelCase Python code that would skew naming detection
         venv = tmp_repo / "my-venv" / "lib" / "pkg"
@@ -118,7 +119,6 @@ class TestPatternDetector:
 
     def test_gitignored_dirs_excluded_from_architecture(self, tmp_repo):
         """Gitignored pyproject.toml files should not trigger monorepo detection."""
-        import subprocess
 
         # Add a gitignored dir with its own pyproject.toml
         ignored_pkg = tmp_repo / "vendor" / "somepkg"

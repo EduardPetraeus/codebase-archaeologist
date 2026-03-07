@@ -238,7 +238,7 @@ class CodeStructureAnalyzer(BaseAnalyzer):
 
         # Level 1: immediate subdirectories
         for item in sorted(self.repo_path.iterdir()):
-            if not item.is_dir() or item.name.startswith("."):
+            if not item.is_dir():
                 continue
             if self._is_path_gitignored(item):
                 continue

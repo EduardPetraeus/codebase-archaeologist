@@ -49,15 +49,15 @@ class BaseAnalyzer(ABC):
         self._git_checked = True
         try:
             result = subprocess.run(
-                ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+                ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
                 capture_output=True,
                 text=True,
                 cwd=self.repo_path,
                 timeout=30,
             )
-            if result.returncode == 0 and result.stdout.strip():
+            if result.returncode == 0 and result.stdout.strip("\0"):
                 self._git_files = {
-                    self.repo_path / line for line in result.stdout.strip().split("\n") if line
+                    self.repo_path / entry for entry in result.stdout.split("\0") if entry
                 }
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             pass
