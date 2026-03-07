@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+
 from codebase_archaeologist.analyzers.pattern_detector import PatternDetector
 
 
@@ -85,3 +87,54 @@ class TestPatternDetector:
         assert result.test_patterns == []
         assert result.type_hint_ratio == 0.0
         assert result.docstring_ratio == 0.0
+
+    def test_gitignored_python_excluded_from_patterns(self, tmp_repo):
+        """Python files in gitignored dirs should not affect pattern detection."""
+
+        # Add a venv with camelCase Python code that would skew naming detection
+        venv = tmp_repo / "my-venv" / "lib" / "pkg"
+        venv.mkdir(parents=True)
+        (venv / "badStyle.py").write_text(
+            "def camelCaseFunc():\n    pass\n\n"
+            "def anotherCamel():\n    pass\n\n"
+            "def yetAnother():\n    pass\n"
+        )
+
+        # Gitignore the venv
+        (tmp_repo / ".gitignore").write_text("my-venv/\n")
+        subprocess.run(["git", "add", ".gitignore"], cwd=tmp_repo, capture_output=True, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "chore: add gitignore"],
+            cwd=tmp_repo,
+            capture_output=True,
+            check=True,
+        )
+
+        detector = PatternDetector(repo_path=tmp_repo)
+        result = detector.analyze()
+
+        # camelCase should NOT appear as a detected convention
+        camel_conventions = [c for c in result.naming_conventions if c.pattern == "camelCase"]
+        assert not camel_conventions, "Gitignored camelCase code should not affect detection"
+
+    def test_gitignored_dirs_excluded_from_architecture(self, tmp_repo):
+        """Gitignored pyproject.toml files should not trigger monorepo detection."""
+
+        # Add a gitignored dir with its own pyproject.toml
+        ignored_pkg = tmp_repo / "vendor" / "somepkg"
+        ignored_pkg.mkdir(parents=True)
+        (ignored_pkg / "pyproject.toml").write_text('[project]\nname = "vendor"\n')
+
+        (tmp_repo / ".gitignore").write_text("vendor/\n")
+        subprocess.run(["git", "add", ".gitignore"], cwd=tmp_repo, capture_output=True, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "chore: add gitignore"],
+            cwd=tmp_repo,
+            capture_output=True,
+            check=True,
+        )
+
+        detector = PatternDetector(repo_path=tmp_repo)
+        result = detector.analyze()
+
+        assert "monorepo" not in result.architecture_patterns
